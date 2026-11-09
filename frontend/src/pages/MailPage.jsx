@@ -1,0 +1,320 @@
+import { useEffect, useMemo, useState } from 'react'
+import { api } from '../api.js'
+import UploadButton from '../components/UploadButton.jsx'
+import { ACTION_TONE, DECISION, SENS_CHIP } from '../lib/format.js'
+
+const KPI = [
+  { key: 'total', icon: '/emoji/inbox.png', label: '오늘 접수', value: 14, color: 'var(--text)' },
+  { key: 'review', icon: '/emoji/hourglass.png', label: '담당자 검토 대기', value: 5, color: '#8C5F12' },
+  { key: 'blocked', icon: '/emoji/locked.png', label: '보안 차단', value: 3, color: '#B22E3B' },
+  { key: 'fix', icon: '/emoji/memo.png', label: '서류 보완·재인식', value: 2, color: '#4A3FA7' },
+]
+
+export default function MailPage({ onChanged, onSubmit }) {
+  const [mails, setMails] = useState([])
+  const [selectedId, setSelectedId] = useState(null)
+  const [readIds, setReadIds] = useState(() => new Set())
+  const [query, setQuery] = useState('')
+  const [drafts, setDrafts] = useState({})
+  const [attached, setAttached] = useState({})
+
+  useEffect(() => {
+    api.getMails().then((list) => {
+      setMails(list)
+      if (list.length) {
+        setSelectedId(list[0].id)
+        setReadIds(new Set([list[0].id]))
+      }
+    })
+  }, [])
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return mails
+    return mails.filter((m) => `${m.org} ${m.title} ${m.snippet}`.toLowerCase().includes(q))
+  }, [mails, query])
+
+  const selected = mails.find((m) => m.id === selectedId)
+  const unreadCount = mails.filter((m) => m.unread && !readIds.has(m.id)).length
+
+  function select(id) {
+    setSelectedId(id)
+    setReadIds((prev) => new Set(prev).add(id))
+  }
+
+  return (
+    <main className="page page--mail">
+      <section className="kpi-grid" aria-label="오늘 현황">
+        {KPI.map((k) => (
+          <div className="kpi" key={k.key}>
+            <img className="kpi__icon" src={k.icon} alt="" width="48" height="48" />
+            <span className="kpi__value" style={{ color: k.color }}>{k.value}</span>
+            <span className="kpi__label">{k.label}</span>
+          </div>
+        ))}
+      </section>
+
+      <div className="panes">
+        <Mailbox
+          mails={visible}
+          total={mails.length}
+          unread={unreadCount}
+          selectedId={selectedId}
+          readIds={readIds}
+          query={query}
+          onQuery={setQuery}
+          onSelect={select}
+          onSubmit={onSubmit}
+        />
+        {selected && (
+          <MailDetail
+            key={selected.id}
+            mail={selected}
+            reply={drafts[selected.id] ?? selected.reply}
+            onReply={(text) => setDrafts((d) => ({ ...d, [selected.id]: text }))}
+            attached={attached}
+            onToggleAttach={(index, current) =>
+              setAttached((a) => ({ ...a, [`${selected.id}:${index}`]: !current }))
+            }
+            isSent={selected.sent}
+            onSend={async (payload) => {
+              await api.sendMail(selected.id, payload)
+              setMails((list) => list.map((m) => (m.id === selected.id ? { ...m, sent: true } : m)))
+              onChanged?.()
+            }}
+          />
+        )}
+      </div>
+    </main>
+  )
+}
+
+function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, onSelect, onSubmit }) {
+  return (
+    <section className="card mailbox" aria-label="수신함">
+      <div className="mailbox__search">
+        <label className="sr-only" htmlFor="mail-search">메일 검색</label>
+        <div className="searchpill">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#606874" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-3.5-3.5" />
+          </svg>
+          <input id="mail-search" value={query} onChange={(e) => onQuery(e.target.value)} placeholder="보낸 사람, 제목, 고객명 검색" />
+        </div>
+      </div>
+
+      <div className="folders" role="tablist" aria-label="편지함">
+        <button type="button" role="tab" aria-selected="true" className="folders__tab is-active">
+          받은편지함 <span className="count-badge">{unread}</span>
+        </button>
+        <button type="button" role="tab" aria-selected="false" className="folders__tab">처리 완료</button>
+        <button type="button" role="tab" aria-selected="false" className="folders__tab">보낸편지함</button>
+      </div>
+
+      <div className="mailbox__toolbar">
+        <span className="checkbox" aria-hidden="true" />
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#606874" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="새로고침">
+          <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+          <path d="M20 4v5h-5" />
+        </svg>
+        <span className="mailbox__range">1–{mails.length} / {total}</span>
+      </div>
+
+      <div className="mailbox__list">
+        {mails.map((m) => {
+          const isUnread = m.unread && !readIds.has(m.id)
+          const dec = DECISION[m.decision]
+          return (
+            <button
+              key={m.id}
+              type="button"
+              className={'mailrow' + (m.id === selectedId ? ' is-selected' : '') + (isUnread ? ' is-unread' : '')}
+              onClick={() => onSelect(m.id)}
+            >
+              <span className="mailrow__side" aria-hidden="true">
+                <span className="checkbox" />
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B3B8C0" strokeWidth="2" strokeLinejoin="round">
+                  <path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.3l1.1-6.2L3 9.7l6.2-.9L12 3z" />
+                </svg>
+              </span>
+              <span className="mailrow__main">
+                <span className="mailrow__top">
+                  <span className="mailrow__sender">
+                    {isUnread && <span className="dot" />}
+                    {m.org}
+                  </span>
+                  <span className="mailrow__time">{m.time}</span>
+                </span>
+                <span className="mailrow__subject">{m.title}</span>
+                <span className="mailrow__snippet">{m.snippet}</span>
+                <span className="mailrow__meta">
+                  <span className={`pill pill--${dec.tone}`}>{dec.label}</span>
+                  <span className="muted small">{m.score > 0 ? `위험도 ${m.score}` : m.level}</span>
+                  {m.hasAttachment && (
+                    <svg className="mailrow__clip" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#606874" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="첨부 파일 있음">
+                      <path d="M21 11.5l-8.5 8.5a5 5 0 0 1-7-7L14 4.5a3.3 3.3 0 0 1 4.7 4.7L10.2 17.7a1.7 1.7 0 0 1-2.4-2.4L15.5 7.6" />
+                    </svg>
+                  )}
+                </span>
+              </span>
+            </button>
+          )
+        })}
+        {mails.length === 0 && <p className="empty">조건에 맞는 메일이 없습니다.</p>}
+      </div>
+
+      <div className="mailbox__footer">
+        <UploadButton onClick={onSubmit} />
+      </div>
+    </section>
+  )
+}
+
+function MailDetail({ mail, reply, onReply, attached, onToggleAttach, isSent, onSend }) {
+  const dec = DECISION[mail.decision]
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const attachments = mail.attachments.map((a, index) => ({
+    ...a,
+    index,
+    on: attached[`${mail.id}:${index}`] ?? a.attached,
+  }))
+  const attachedCount = attachments.filter((a) => a.on).length
+
+  async function send() {
+    setBusy(true)
+    setError('')
+    try {
+      await onSend({ reply, attachments: attachments.filter((a) => a.on).map((a) => a.name) })
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="card detail" aria-label="메일 상세">
+      <div className="detail__head">
+        <div className="detail__title">
+          <h1>{mail.title}</h1>
+          <p className="muted small">{mail.org} · {mail.received}</p>
+        </div>
+        <div className="detail__score">
+          <span className="muted small">
+            위험도 <b className="detail__scorenum">{mail.score > 0 ? mail.score : '-'}</b> · {mail.level}
+          </span>
+          <span className={`pill pill--lg pill--${dec.tone}`}>{dec.label}</span>
+        </div>
+      </div>
+
+      <div className="detail__body">
+        <div className="grid2">
+          <div className="panel panel--soft">
+            <h2 className="panel__title">메일 원문</h2>
+            <p className="mailmeta">
+              보낸 사람 · {mail.from}<br />
+              받는 사람 · 자료제공 담당 데스크<br />
+              수신 · {mail.received}
+            </p>
+            <p className="mailbody">{mail.body}</p>
+          </div>
+
+          <div className="panel panel--outline stack-lg">
+            <div>
+              <h2 className="panel__title">누가 무엇을 요청했나요</h2>
+              <dl className="kv">
+                {mail.who.map(([k, v]) => (
+                  <div className="kv__row" key={k}>
+                    <dt>{k}</dt>
+                    <dd>{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            <div>
+              <h2 className="panel__title">요청 항목과 민감도</h2>
+              <div className="fieldlist">
+                {mail.fields.map((f) => (
+                  <div className="fieldlist__row" key={f.name}>
+                    <span className="fieldlist__name">{f.name}</span>
+                    <span
+                      className="chip"
+                      style={{ background: SENS_CHIP[f.level].bg, color: SENS_CHIP[f.level].fg }}
+                    >
+                      {f.level > 0 ? `민감도 ${f.level}` : '-'}
+                    </span>
+                    <span className={`fieldlist__action tone-${ACTION_TONE[f.action] || 'gray'}`}>{f.action}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h2 className="panel__title">판단 근거</h2>
+              <ul className="bullets">
+                {mail.reasons.map((r) => <li key={r}>{r}</li>)}
+              </ul>
+              <p className="note" role="note">{mail.note}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid2">
+          <div className="panel panel--outline compose">
+            <div className="compose__head">
+              <h2 className="panel__title">회신 쓰기</h2>
+              <button type="button" className="btn btn--soft btn--sm" onClick={() => navigator.clipboard?.writeText(reply)}>
+                복사
+              </button>
+            </div>
+            <div className="compose__box">
+              <div className="compose__row"><span>받는 사람</span><span className="break">{mail.from}</span></div>
+              <div className="compose__row"><span>제목</span><span>Re: {mail.title}</span></div>
+              <label className="sr-only" htmlFor="reply-body">회신 내용</label>
+              <textarea id="reply-body" rows={9} value={reply} onChange={(e) => onReply(e.target.value)} />
+            </div>
+            <div className="compose__foot">
+              <span className="muted small">{attachments.length ? `첨부 ${attachedCount}개 포함` : '첨부 없음'}</span>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={!dec.canSend || isSent || busy}
+                onClick={send}
+              >
+                {isSent ? '전송됨' : busy ? '전송 중…' : '전송'}
+              </button>
+            </div>
+            {!dec.canSend && <p className="compose__hint">{dec.label} 건은 전송할 수 없습니다.</p>}
+            {error && <p className="compose__hint" role="alert">{error}</p>}
+          </div>
+
+          <div className="panel panel--outline stack">
+            <h2 className="panel__title">마스킹한 첨부 문서</h2>
+            {attachments.map((a) => (
+              <div className="attach" key={a.name}>
+                <div className="docthumb" aria-hidden="true">
+                  <i /><i className={a.masked ? 'is-masked' : ''} /><i /><i className={a.masked ? 'is-masked' : ''} />
+                </div>
+                <div className="attach__info">
+                  <div className="attach__name">{a.name}</div>
+                  <div className="muted small">{a.meta}</div>
+                </div>
+                <button
+                  type="button"
+                  className={'btn btn--sm ' + (a.on ? 'btn--soft-green' : 'btn--outline')}
+                  onClick={() => onToggleAttach(a.index, a.on)}
+                >
+                  {a.on ? '회신에 첨부됨' : '회신에 첨부'}
+                </button>
+              </div>
+            ))}
+            <p className="muted small">{mail.attachmentNote}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
