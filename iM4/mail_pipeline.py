@@ -30,6 +30,16 @@ Gmail 쪽 연동 방법 (둘 중 편한 것)
 
     raw 메일을 .eml 파일로 저장만 해 두면 CLI로도 돌릴 수 있다.
 
+백엔드 연결 (server 에서 iM4 를 sys.path 에 넣은 상태)
+    from gmail_fetch import fetch_and_process
+    from mail_pipeline import to_request_record
+
+    for result in fetch_and_process("label:검사", max_results=5):
+        store.save_request(**to_request_record(result))
+
+    - 워크플로우 2 가 실패한 메일은 fetch_and_process 결과에 "error" 키로 들어온다 → 저장 전에 건너뛸 것
+    - 워크플로우 1 이 실패하면 result["workflow1"] = {"error": ...} 이고 워크플로우 2 결과는 그대로 있다
+
 사용법
     python mail_pipeline.py inbox/                # 폴더 안 .eml 전부
     python mail_pipeline.py inbox/R11.eml         # 1개
@@ -43,7 +53,8 @@ import html
 import json
 import re
 from email import policy
-from email.utils import parsedate_to_datetime
+from datetime import datetime
+from email.utils import parseaddr, parsedate_to_datetime
 from pathlib import Path
 
 from fpdf import FPDF
@@ -93,16 +104,23 @@ def parse_eml(raw: bytes, message_id: str | None = None) -> dict:
             attachments.append({"filename": filename, "data": data})
 
     date = msg.get("Date", "")
+    received_at = None
     try:
-        date = parsedate_to_datetime(date).strftime("%Y-%m-%d %H:%M")
+        dt = parsedate_to_datetime(date)
+        date = dt.strftime("%Y-%m-%d %H:%M")
+        received_at = dt.isoformat()  # DB 저장용 (시간대 포함)
     except (TypeError, ValueError):
         pass
+
+    sender = str(msg.get("From", ""))
 
     return {
         "message_id": message_id or msg.get("Message-ID", "").strip("<>"),
         "subject": str(msg.get("Subject", "")),
-        "sender": str(msg.get("From", "")),
+        "sender": sender,
+        "sender_email": parseaddr(sender)[1],
         "date": date,
+        "received_at": received_at,
         "body": body.strip(),
         "attachments": attachments,
     }
@@ -175,11 +193,8 @@ def _run_agent(agent_id: str, config_id: str, paths: list[Path]) -> dict:
     from agent_client import AgentClient
     from upload import upload_file
 
-    try:
-        file_ids = [upload_file(p) for p in paths]
-        return AgentClient(agent_id=agent_id, config_id=config_id).run(file_ids)
-    except Exception as e:
-        return {"error": str(e)}
+    file_ids = [upload_file(p) for p in paths]
+    return AgentClient(agent_id=agent_id, config_id=config_id).run(file_ids)
 
 
 def process_mail(mail: dict, run_agents: bool = True, force: bool = False) -> dict:
@@ -205,7 +220,10 @@ def process_mail(mail: dict, run_agents: bool = True, force: bool = False) -> di
         "message_id": mail["message_id"],
         "subject": mail.get("subject", ""),
         "sender": mail.get("sender", ""),
+        "sender_email": mail.get("sender_email", ""),
         "date": mail.get("date", ""),
+        "received_at": mail.get("received_at"),
+        "body": mail.get("body", ""),
         "mail_pdf": str(mail_pdf),
         "attachments": [p.name for p in attachment_paths],
         "workflow2": None,  # 메일 요청 보안 판정
@@ -218,14 +236,19 @@ def process_mail(mail: dict, run_agents: bool = True, force: bool = False) -> di
     if not AGENT_ID_2:
         raise ValueError("AGENT_ID_2 (워크플로우 2) 가 .env 에 없습니다.")
 
+    # 워크플로우 2 가 실패하면 저장할 게 없으므로 그대로 에러를 올린다 (결과 파일도 안 남김)
     print("[워크플로우 2] 메일 요청 판정")
     result["workflow2"] = _run_agent(AGENT_ID_2, CONFIG_ID_2, [mail_pdf])
 
+    # 워크플로우 1 은 실패해도 워크플로우 2 결과는 살리고 에러만 기록한다
     if doc_paths:
         if not AGENT_ID:
             raise ValueError("AGENT_ID (워크플로우 1) 가 .env 에 없습니다.")
         print(f"[워크플로우 1] 첨부 서류 {len(doc_paths)}건 판정")
-        result["workflow1"] = _run_agent(AGENT_ID, CONFIG_ID, doc_paths)
+        try:
+            result["workflow1"] = _run_agent(AGENT_ID, CONFIG_ID, doc_paths)
+        except Exception as e:
+            result["workflow1"] = {"error": str(e)}
 
     MAIL_RESULT_DIR.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(result, ensure_ascii=False, indent=4), encoding="utf-8")
@@ -236,6 +259,48 @@ def process_mail(mail: dict, run_agents: bool = True, force: bool = False) -> di
 
 def process_eml(raw: bytes, message_id: str | None = None, **kwargs) -> dict:
     return process_mail(parse_eml(raw, message_id), **kwargs)
+
+
+##################################################
+# 백엔드 연결용
+##################################################
+
+# DB data_requests.risk_level 에 들어갈 수 있는 값
+RISK_LEVELS = {"낮음", "보통", "높음", "매우 높음"}
+
+
+def to_request_record(result: dict) -> dict:
+    """
+    process_mail 결과를 server store.save_request(**kwargs) 인자 형태로 바꾼다.
+
+        record = to_request_record(result)
+        store.save_request(**record)
+    """
+
+    wf2 = dict(result.get("workflow2") or {})
+    wf1 = result.get("workflow1") or {}
+
+    if not wf2 or "error" in wf2:
+        raise ValueError(f"워크플로우 2 결과가 없습니다 (message_id={result.get('message_id')})")
+
+    # DB 제약에 안 맞는 값은 저장 실패 대신 비워서 넘긴다
+    if wf2.get("risk_level") not in RISK_LEVELS:
+        wf2["risk_level"] = None
+
+    received_at = result.get("received_at")
+
+    return {
+        "gmail_message_id": result["message_id"],
+        "requester_company": wf2.get("requester_company"),
+        "requester_email": result.get("sender_email") or parseaddr(result.get("sender", ""))[1] or None,
+        "request_reason": wf2.get("request_reason"),
+        # 워크플로우 2 가 고객을 못 찾으면 첨부 서류(워크플로우 1)의 신청자 ID 를 쓴다
+        "applicant_id": wf2.get("applicant_id") or wf1.get("applicant_id"),
+        "result": wf2,
+        "mail_subject": result.get("subject"),
+        "mail_body": result.get("body"),
+        "mail_received_at": datetime.fromisoformat(received_at) if received_at else None,
+    }
 
 
 ##################################################

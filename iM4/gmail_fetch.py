@@ -61,6 +61,23 @@ def fetch_raw_messages(service, query: str = "in:inbox", max_results: int = 5):
         yield item["id"], base64.urlsafe_b64decode(msg["raw"])
 
 
+def fetch_and_process(query: str = "in:inbox", max_results: int = 5,
+                      run_agents: bool = True, force: bool = False) -> list[dict]:
+    """
+    Gmail 검색 → 메일마다 process_eml 실행 → 결과 리스트.
+    한 통이 실패해도 나머지는 계속 처리하고, 실패한 건 {"message_id", "error"} 로 넣는다.
+    """
+
+    service = get_service()
+    results = []
+    for mid, raw in fetch_raw_messages(service, query, max_results):
+        try:
+            results.append(process_eml(raw, message_id=mid, run_agents=run_agents, force=force))
+        except Exception as e:
+            results.append({"message_id": mid, "error": str(e)})
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(description="Gmail → mail_pipeline 연결 테스트")
     parser.add_argument("-q", "--query", default="in:inbox", help="Gmail 검색어")
@@ -69,29 +86,25 @@ def main():
     parser.add_argument("--force", action="store_true", help="이미 처리한 메일도 다시 실행")
     args = parser.parse_args()
 
-    service = get_service()
+    results = fetch_and_process(
+        args.query, args.max, run_agents=not args.dataset_only, force=args.force,
+    )
 
-    count = 0
-    for mid, raw in fetch_raw_messages(service, args.query, args.max):
-        count += 1
+    for i, result in enumerate(results, 1):
         print()
         print("=" * 60)
-        print(f"[{count}] Gmail ID : {mid}")
+        print(f"[{i}] Gmail ID : {result['message_id']}")
         print("=" * 60)
-        try:
-            result = process_eml(
-                raw, message_id=mid,
-                run_agents=not args.dataset_only, force=args.force,
-            )
-            print(f"제목 : {result['subject']}")
-            if result.get("workflow2"):
-                print(f"워크플로우2 : {result['workflow2'].get('decision')}")
-            if result.get("workflow1"):
-                print(f"워크플로우1 : {result['workflow1'].get('decision')}")
-        except Exception as e:
-            print(f"실패 : {e}")
+        if "error" in result:
+            print(f"실패 : {result['error']}")
+            continue
+        print(f"제목 : {result['subject']}")
+        for key in ("workflow2", "workflow1"):
+            wf = result.get(key)
+            if wf:
+                print(f"{key} : {wf.get('decision') or wf.get('error')}")
 
-    if count == 0:
+    if not results:
         print(f"검색 결과가 없습니다 (q={args.query!r})")
 
 
