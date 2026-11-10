@@ -5,10 +5,28 @@ import ApplicationsPage from './pages/ApplicationsPage.jsx'
 import SubmitPage from './pages/SubmitPage.jsx'
 import { getBadgeCounts } from './api.js'
 
+const PAGES = ['mail', 'applications', 'submit']
+
+// 주소의 해시로 현재 화면을 기억한다. 새로고침해도 같은 화면에 머문다.
+//   #mail, #submit, #applications, #applications/123
+function readHash() {
+  const [name, id] = window.location.hash.replace(/^#\/?/, '').split('/')
+  return {
+    page: PAGES.includes(name) ? name : 'mail',
+    focusId: name === 'applications' && id ? Number(id) : null,
+  }
+}
+
 export default function App() {
-  const [page, setPage] = useState('mail')
-  const [focusId, setFocusId] = useState(null)
+  const [route, setRoute] = useState(readHash)
   const [badges, setBadges] = useState({})
+  const { page, focusId } = route
+
+  useEffect(() => {
+    const onHash = () => setRoute(readHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const refreshBadges = () => getBadgeCounts().then(setBadges).catch(() => {})
   useEffect(() => {
@@ -16,12 +34,10 @@ export default function App() {
   }, [page])
 
   const go = (next) => {
-    setFocusId(null)
-    setPage(next)
+    window.location.hash = next
   }
   const openApplication = (id) => {
-    setFocusId(id)
-    setPage('applications')
+    window.location.hash = `applications/${id}`
   }
 
   return (

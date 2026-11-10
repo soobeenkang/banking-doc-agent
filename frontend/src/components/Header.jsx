@@ -5,7 +5,7 @@ const TABS = [
 ]
 
 // 배지 숫자의 뜻 (스크린 리더용)
-const BADGE_LABEL = { mail: '전송 대기', applications: '보완 필요' }
+const BADGE_LABEL = { mail: '전송 대기', applications: '미통과' }
 
 export default function Header({ page, onPage, badges = {} }) {
   return (

@@ -192,7 +192,8 @@ def list_applications(decision: str | None = None, limit: int = 100) -> list[dic
     with pool.connection() as conn:
         return conn.execute(
             """SELECT id, job_id, source_file_name, applicant_id, applicant_name, birth_date, applicant_type,
-                      decision, is_stored, reason, issue_codes, missing_documents, document_types, created_at
+                      decision, is_stored, reject_reasons, reason, issue_codes, missing_documents, document_types,
+                      review_detail, created_at
                  FROM loan_applications
                 WHERE %(d)s::text IS NULL OR decision = %(d)s
                 ORDER BY created_at DESC LIMIT %(n)s""",
@@ -210,6 +211,22 @@ def get_application(application_id: int) -> dict | None:
                 (application_id,),
             ).fetchall()
         return app
+
+
+def get_application_documents(application_id: int) -> list[dict]:
+    with pool.connection() as conn:
+        return conn.execute(
+            """SELECT id, application_id, applicant_id, doc_index, doc_type, page_start, page_end, fields
+                 FROM documents WHERE application_id = %s ORDER BY doc_index""",
+            (application_id,),
+        ).fetchall()
+
+
+def list_field_catalog() -> list[dict]:
+    with pool.connection() as conn:
+        return conn.execute(
+            "SELECT doc_type, field_path, sensitivity, risk_group, description FROM field_catalog ORDER BY doc_type, field_path"
+        ).fetchall()
 
 
 def get_customer(applicant_id: str) -> dict | None:

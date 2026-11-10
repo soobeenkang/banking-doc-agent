@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import UploadButton from '../components/UploadButton.jsx'
-import { APP_STATUS, appStatus, SENS_COLOR } from '../lib/format.js'
+import { APP_STATUS, appStatus, failedChecks, formatDateTime, formatShortDateTime, SENS_COLOR } from '../lib/format.js'
 import { APPLICANT_TYPES, DOC_LABELS, fieldLabel, formatValue, isHashed, lookupField, maskValue } from '../lib/fields.js'
 
 const TABS = [
   { id: 'ALL', label: '전체' },
-  { id: 'FIX', label: '보완 필요' },
   { id: 'PASS', label: '통과' },
-  { id: 'REJECT', label: '반려' },
+  { id: 'REVIEW', label: '검토 필요' },
+  { id: 'MISSING', label: '서류 누락' },
 ]
 
-const RING = { PASS: '#04764C', FIX: '#A0501A', REJECT: '#B22E3B' }
+const RING = { PASS: '#04764C', REVIEW: '#A0501A', MISSING: '#B22E3B' }
 
 export default function ApplicationsPage({ focusId, onSubmit }) {
   const [apps, setApps] = useState(null)
@@ -31,7 +31,7 @@ export default function ApplicationsPage({ focusId, onSubmit }) {
   }, [focusId])
 
   const counts = useMemo(() => {
-    const c = { ALL: 0, PASS: 0, FIX: 0, REJECT: 0 }
+    const c = { ALL: 0, PASS: 0, REVIEW: 0, MISSING: 0 }
     ;(apps ?? []).forEach((a) => {
       c.ALL += 1
       c[appStatus(a)] += 1
@@ -111,7 +111,7 @@ export default function ApplicationsPage({ focusId, onSubmit }) {
                     </span>
                     <span className="approw__side">
                       <span className={`pill pill--${st.tone}`}>{st.label}</span>
-                      <span className="muted small">{a.created_at.slice(5)}</span>
+                      <span className="muted small">{formatShortDateTime(a.created_at)}</span>
                     </span>
                   </button>
                 )
@@ -147,7 +147,7 @@ function ApplicationDetail({ app }) {
     if (app.is_stored) api.getDocuments(app.id).then(setDocs).catch(() => {})
   }, [app.id, app.is_stored])
 
-  const failed = app.review_detail?.failed_checks ?? []
+  const failed = failedChecks(app.review_detail)
   const cross = app.review_detail?.cross_check ?? []
   const totalPages = Math.max(0, ...docs.map((d) => d.page_end))
 
@@ -158,7 +158,7 @@ function ApplicationDetail({ app }) {
           <h2 className="appdetail__name">{app.applicant_name ?? '신청자 확인 불가'}</h2>
           <p className="appdetail__meta">
             신청자 번호 {app.applicant_id ?? '없음'} · 생년월일 {app.birth_date ?? '—'} · 구분{' '}
-            {APPLICANT_TYPES[app.applicant_type] ?? app.applicant_type} · 접수 {app.created_at}
+            {APPLICANT_TYPES[app.applicant_type] ?? app.applicant_type} · 접수 {formatDateTime(app.created_at)}
           </p>
         </div>
         <div className="stamp" style={{ borderColor: RING[status], color: RING[status] }} aria-label={st.label}>
@@ -170,32 +170,34 @@ function ApplicationDetail({ app }) {
         <div className="panel panel--soft">
           <h3 className="panel__title">판단 근거</h3>
           <p className="basis">{app.reason}</p>
-          <p className="muted small">
-            원본 파일 {app.source_file_name} · 실행 번호 {app.job_id}
-          </p>
+          <p className="muted small break">원본 파일 {app.source_file_name ?? '—'}</p>
         </div>
 
         {!app.is_stored && (
           <div>
             <h3 className="panel__title">{st.reasonTitle}</h3>
             <div className="stack">
-              {app.missing_documents.map((d) => (
+              {(app.missing_documents ?? []).map((d) => (
                 <Reason key={`m-${d}`} code="DOC_MISSING" title={`${DOC_LABELS[d] ?? d} 누락`}>
                   서류를 추가로 받아 다시 접수해야 합니다.
                 </Reason>
               ))}
               {failed.map((c, i) => (
-                <Reason key={`f-${i}`} code={c.issue_code} title={`${DOC_LABELS[c.doc_type] ?? c.doc_type}, ${fieldLabel(c.check)}`}>
+                <Reason key={`f-${i}`} code={c.issue_code ?? c.status} title={`${DOC_LABELS[c.doc_type] ?? c.doc_type}, ${fieldLabel(c.check)}`}>
                   {c.reason}
                 </Reason>
               ))}
+              {app.missing_documents?.length === 0 && failed.length === 0 && cross.length === 0 &&
+                (app.reject_reasons ?? []).map((r) => (
+                  <Reason key={`r-${r}`} title={r}>저장 조건을 만족하지 못했습니다.</Reason>
+                ))}
               {cross.map((c, i) => (
-                <Reason key={`c-${i}`} code="CROSS_CHECK" title={`서류 간 대조, ${fieldLabel(c.field)}`}>
+                <Reason key={`c-${i}`} code={c.issue_code ?? 'CROSS_CHECK'} title={`서류 간 대조, ${fieldLabel(c.field)}`}>
                   {c.reason}
                 </Reason>
               ))}
             </div>
-            {app.issue_codes.length > 0 && (
+            {app.issue_codes?.length > 0 && (
               <p className="codes">
                 {app.issue_codes.map((c) => <span key={c} className="chip chip--code">{c}</span>)}
               </p>
@@ -209,7 +211,7 @@ function ApplicationDetail({ app }) {
             <h3 className="panel__title">저장된 서류</h3>
             <p className="muted small">
               PDF {totalPages}쪽에서 서류 {docs.length}종을 찾았습니다.
-              {app.missing_documents.length > 0 && (
+              {app.missing_documents?.length > 0 && (
                 <span className="warn-text"> 누락: {app.missing_documents.map((m) => DOC_LABELS[m] ?? m).join(', ')}</span>
               )}
             </p>

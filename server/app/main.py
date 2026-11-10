@@ -101,6 +101,18 @@ def get_application(application_id: int):
     return app_
 
 
+@app.get("/api/applications/{application_id}/documents")
+def get_application_documents(application_id: int):
+    """신청 건의 저장된 서류 (통과 건만 존재, 나머지는 빈 배열)."""
+    return store.get_application_documents(application_id)
+
+
+@app.get("/api/field-catalog")
+def get_field_catalog():
+    """서류·필드별 민감도와 위험 그룹."""
+    return store.list_field_catalog()
+
+
 ##################################################
 # 고객 (워크플로우 2에서 사용)
 ##################################################

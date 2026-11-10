@@ -94,7 +94,7 @@ export const loanApplications = [
   {
     id: 106, job_id: 'job_106Q7mXcPz', source_file_name: 'scan_20261108_1402.pdf', created_at: '2026-11-08 14:02',
     applicant_id: null, applicant_name: null, birth_date: null, applicant_type: 'NONE',
-    decision: '반려', is_stored: false,
+    decision: '서류 누락', is_stored: false,
     reject_reasons: ['신청자 식별 불가', '대출신청서 누락'],
     reason: '대출신청서가 없어 신청자 번호를 확인할 수 없고, 운전면허증과 주민등록등본의 성명이 서로 다릅니다.',
     issue_codes: ['APPLICANT_NOT_FOUND', 'NAME_MISMATCH'],
@@ -111,7 +111,7 @@ export const loanApplications = [
   {
     id: 105, job_id: 'job_105Lk2RtVb', source_file_name: '최민지_대출서류.pdf', created_at: '2026-11-08 13:20',
     applicant_id: P.minji.id, applicant_name: P.minji.name, birth_date: P.minji.birth, applicant_type: 'EMP',
-    decision: '보완 필요', is_stored: false,
+    decision: '서류 누락', is_stored: false,
     reject_reasons: ['재직증명서 누락', '주민등록등본 유효기간 초과'],
     reason: '재직증명서가 제출되지 않았고, 주민등록등본이 기준일보다 90일 이상 전에 발급되었습니다. 나머지 서류 간 불일치는 없습니다.',
     issue_codes: ['DOC_MISSING', 'DOC_EXPIRED'],
@@ -130,7 +130,7 @@ export const loanApplications = [
   {
     id: 103, job_id: 'job_103Hs8WnQe', source_file_name: '이서연_사업자.pdf', created_at: '2026-11-08 10:55',
     applicant_id: P.seoyeon.id, applicant_name: P.seoyeon.name, birth_date: P.seoyeon.birth, applicant_type: 'BUS',
-    decision: '보완 필요', is_stored: false,
+    decision: '검토 필요', is_stored: false,
     reject_reasons: ['소득 금액 불일치'],
     reason: '대출신청서의 월소득으로 계산한 연소득과 소득금액증명원의 연소득 차이가 20%를 넘습니다.',
     issue_codes: ['INCOME_MISMATCH'],

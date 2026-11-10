@@ -3,11 +3,12 @@ import { api } from '../api.js'
 import UploadButton from '../components/UploadButton.jsx'
 import { ACTION_TONE, DECISION, SENS_CHIP } from '../lib/format.js'
 
+// 현황 카드. 누르면 그 조건으로 수신함을 거른다(다시 누르면 해제).
 const KPI = [
-  { key: 'total', icon: '/emoji/inbox.png', label: '오늘 접수', value: 14, color: 'var(--text)' },
-  { key: 'review', icon: '/emoji/hourglass.png', label: '담당자 검토 대기', value: 5, color: '#8C5F12' },
-  { key: 'blocked', icon: '/emoji/locked.png', label: '보안 차단', value: 3, color: '#B22E3B' },
-  { key: 'fix', icon: '/emoji/memo.png', label: '서류 보완·재인식', value: 2, color: '#4A3FA7' },
+  { key: 'today', icon: '/emoji/inbox.png', label: '오늘 접수', color: 'var(--text)', match: (m) => m.received?.startsWith('오늘') },
+  { key: 'review', icon: '/emoji/hourglass.png', label: '담당자 검토 대기', color: '#8C5F12', match: (m) => m.decision === 'MANUAL_REVIEW' && !m.sent },
+  { key: 'blocked', icon: '/emoji/locked.png', label: '보안 차단', color: '#B22E3B', match: (m) => m.decision === 'SECURITY_BLOCKED' },
+  { key: 'fix', icon: '/emoji/memo.png', label: '서류 보완·재인식', color: '#4A3FA7', match: (m) => m.decision === 'NEEDS_DOCUMENT' || m.decision === 'OCR_RETRY' },
 ]
 
 export default function MailPage({ onChanged, onSubmit }) {
@@ -17,22 +18,48 @@ export default function MailPage({ onChanged, onSubmit }) {
   const [query, setQuery] = useState('')
   const [drafts, setDrafts] = useState({})
   const [attached, setAttached] = useState({})
+  const [kpiFilter, setKpiFilter] = useState(null)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
-    api.getMails().then((list) => {
-      setMails(list)
-      if (list.length) {
-        setSelectedId(list[0].id)
-        setReadIds(new Set([list[0].id]))
-      }
-    })
+    api
+      .getMails()
+      .then((list) => {
+        setMails(list)
+        if (list.length) {
+          setSelectedId(list[0].id)
+          setReadIds(new Set([list[0].id]))
+        }
+      })
+      .catch((e) => setLoadError(e.message))
   }, [])
+
+  const kpiCounts = useMemo(
+    () => Object.fromEntries(KPI.map((k) => [k.key, mails.filter(k.match).length])),
+    [mails],
+  )
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return mails
-    return mails.filter((m) => `${m.org} ${m.title} ${m.snippet}`.toLowerCase().includes(q))
-  }, [mails, query])
+    const kpi = KPI.find((k) => k.key === kpiFilter)
+    return mails.filter((m) => {
+      if (kpi && !kpi.match(m)) return false
+      if (!q) return true
+      return `${m.org} ${m.title} ${m.snippet}`.toLowerCase().includes(q)
+    })
+  }, [mails, query, kpiFilter])
+
+  function toggleKpi(key) {
+    const next = kpiFilter === key ? null : key
+    setKpiFilter(next)
+    // 선택된 메일이 걸러지면 걸러진 목록의 첫 메일을 연다
+    const kpi = KPI.find((k) => k.key === next)
+    const cur = mails.find((m) => m.id === selectedId)
+    if (kpi && (!cur || !kpi.match(cur))) {
+      const first = mails.find(kpi.match)
+      if (first) select(first.id)
+    }
+  }
 
   const selected = mails.find((m) => m.id === selectedId)
   const unreadCount = mails.filter((m) => m.unread && !readIds.has(m.id)).length
@@ -46,13 +73,20 @@ export default function MailPage({ onChanged, onSubmit }) {
     <main className="page page--mail">
       <section className="kpi-grid" aria-label="오늘 현황">
         {KPI.map((k) => (
-          <div className="kpi" key={k.key}>
-            <img className="kpi__icon" src={k.icon} alt="" width="48" height="48" />
-            <span className="kpi__value" style={{ color: k.color }}>{k.value}</span>
+          <button
+            type="button"
+            className={'kpi' + (kpiFilter === k.key ? ' is-active' : '')}
+            key={k.key}
+            aria-pressed={kpiFilter === k.key}
+            onClick={() => toggleKpi(k.key)}
+          >
+            <img className="kpi__icon" src={k.icon} alt="" width="40" height="40" />
+            <span className="kpi__value" style={{ color: k.color }}>{kpiCounts[k.key] ?? 0}</span>
             <span className="kpi__label">{k.label}</span>
-          </div>
+          </button>
         ))}
       </section>
+      {loadError && <p className="form-error" role="alert">{loadError}</p>}
 
       <div className="panes">
         <Mailbox
@@ -63,6 +97,8 @@ export default function MailPage({ onChanged, onSubmit }) {
           readIds={readIds}
           query={query}
           onQuery={setQuery}
+          filterLabel={KPI.find((k) => k.key === kpiFilter)?.label}
+          onClearFilter={() => setKpiFilter(null)}
           onSelect={select}
           onSubmit={onSubmit}
         />
@@ -89,7 +125,7 @@ export default function MailPage({ onChanged, onSubmit }) {
   )
 }
 
-function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, onSelect, onSubmit }) {
+function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, filterLabel, onClearFilter, onSelect, onSubmit }) {
   return (
     <section className="card mailbox" aria-label="수신함">
       <div className="mailbox__search">
@@ -117,7 +153,12 @@ function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, on
           <path d="M20 12a8 8 0 1 1-2.3-5.7" />
           <path d="M20 4v5h-5" />
         </svg>
-        <span className="mailbox__range">1–{mails.length} / {total}</span>
+        {filterLabel && (
+          <button type="button" className="filterchip" onClick={onClearFilter} aria-label={`${filterLabel} 필터 해제`}>
+            {filterLabel} <span aria-hidden="true">×</span>
+          </button>
+        )}
+        <span className="mailbox__range">{mails.length ? `1–${mails.length}` : '0'} / {total}</span>
       </div>
 
       <div className="mailbox__list">
