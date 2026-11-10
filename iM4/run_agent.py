@@ -72,6 +72,10 @@ def main():
             failed.append(file_path.name)
             continue
 
+        # 에이전트는 원본 파일명을 모르므로 여기서 채워 넣는다 (맨 앞 키로 유지)
+        if isinstance(result, dict):
+            result = {"file": file_path.name, **{k: v for k, v in result.items() if k != "file"}}
+
         out_path = RESULT_DIR / f"{file_path.stem}.json"
 
         with open(out_path, "w", encoding="utf-8") as f:
