@@ -87,6 +87,12 @@ export const api = {
   // 백엔드가 없어 항상 목업. 백엔드가 생기면 call('/api/mails'), call(`/api/mails/${id}/send`, postJson(payload)) 로 바꾼다.
   getMails: () => delay(structuredClone(mockMails)),
 
+  // 별(중요) 표시. 실제 메일이 붙으면 call(`/api/requests/${id}`, { method: 'PATCH', ...json({ is_starred }) }) 로 바꾼다.
+  starMail: (id, starred) => {
+    mockMails = mockMails.map((m) => (m.id === id ? { ...m, starred } : m))
+    return delay({ id, is_starred: starred }, 80)
+  },
+
   sendMail: (id) => {
     mockMails = mockMails.map((m) => (m.id === id ? { ...m, sent: true } : m))
     return delay({ ok: true }, 300)

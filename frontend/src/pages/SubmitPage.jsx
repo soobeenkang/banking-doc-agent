@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
-import { APP_STATUS, appStatus, formatDateTime } from '../lib/format.js'
+import { APP_STATUS, appStatus, cleanText, formatDateTime } from '../lib/format.js'
 import { DOC_LABELS } from '../lib/fields.js'
 
 const MAX_MB = 30
@@ -159,7 +159,7 @@ export default function SubmitPage({ onOpen, onDone }) {
           </span>
           <strong className="drop__title">PDF를 여기에 놓거나 눌러서 고르세요</strong>
           <p className="muted small">
-            면허증, 등본, 대출신청서, 금융거래확인서, 소득금액증명원, 재직증명서를 한 파일에 담아 주세요. 최대 {MAX_MB}MB.
+            신분증, 등본, 대출신청서, 금융거래확인서, 소득 서류, 재직증명서(사업자는 사업자등록증 등)를 한 파일에 담아 주세요. 최대 {MAX_MB}MB.
           </p>
         </div>
       ) : (
@@ -298,7 +298,7 @@ function ResultCard({ app, onOpen }) {
         <span className="strong">{app.applicant_name ?? '신청자 확인 불가'}</span>
         <span className="muted small">{app.applicant_id}</span>
       </div>
-      <p>{app.reason}</p>
+      <p>{cleanText(app.reason)}</p>
       {app.reject_reasons?.length > 0 && (
         <ul className="bullets">
           {app.reject_reasons.map((r) => <li key={r}>{r}</li>)}

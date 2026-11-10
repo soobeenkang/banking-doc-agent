@@ -132,7 +132,7 @@ export const loanApplications = [
     applicant_id: P.seoyeon.id, applicant_name: P.seoyeon.name, birth_date: P.seoyeon.birth, applicant_type: 'BUS',
     decision: '검토 필요', is_stored: false,
     reject_reasons: ['소득 금액 불일치'],
-    reason: '대출신청서의 월소득으로 계산한 연소득과 소득금액증명원의 연소득 차이가 20%를 넘습니다.',
+    reason: '대출신청서의 월소득으로 계산한 연소득과 소득확인서의 연소득 차이가 20%를 넘습니다.',
     issue_codes: ['INCOME_MISMATCH'],
     missing_documents: [],
     document_types: ALL_TYPES,

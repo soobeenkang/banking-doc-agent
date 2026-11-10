@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import UploadButton from '../components/UploadButton.jsx'
-import { APP_STATUS, appStatus, failedChecks, formatDateTime, formatShortDateTime, SENS_COLOR } from '../lib/format.js'
+import { APP_STATUS, appStatus, cleanText, failedChecks, formatDateTime, formatShortDateTime, SENS_COLOR } from '../lib/format.js'
 import { APPLICANT_TYPES, DOC_LABELS, fieldLabel, formatValue, isHashed, lookupField, maskValue } from '../lib/fields.js'
 
 const TABS = [
@@ -149,7 +149,6 @@ function ApplicationDetail({ app }) {
 
   const failed = failedChecks(app.review_detail)
   const cross = app.review_detail?.cross_check ?? []
-  const totalPages = Math.max(0, ...docs.map((d) => d.page_end))
 
   return (
     <section className="card detail" aria-label="신청 상세">
@@ -169,7 +168,7 @@ function ApplicationDetail({ app }) {
       <div className="detail__body">
         <div className="panel panel--soft">
           <h3 className="panel__title">판단 근거</h3>
-          <p className="basis">{app.reason}</p>
+          <p className="basis">{cleanText(app.reason)}</p>
           <p className="muted small break">원본 파일 {app.source_file_name ?? '—'}</p>
         </div>
 
@@ -184,7 +183,7 @@ function ApplicationDetail({ app }) {
               ))}
               {failed.map((c, i) => (
                 <Reason key={`f-${i}`} code={c.issue_code ?? c.status} title={`${DOC_LABELS[c.doc_type] ?? c.doc_type}, ${fieldLabel(c.check)}`}>
-                  {c.reason}
+                  {cleanText(c.reason)}
                 </Reason>
               ))}
               {app.missing_documents?.length === 0 && failed.length === 0 && cross.length === 0 &&
@@ -193,7 +192,7 @@ function ApplicationDetail({ app }) {
                 ))}
               {cross.map((c, i) => (
                 <Reason key={`c-${i}`} code={c.issue_code ?? 'CROSS_CHECK'} title={`서류 간 대조, ${fieldLabel(c.field)}`}>
-                  {c.reason}
+                  {cleanText(c.reason)}
                 </Reason>
               ))}
             </div>
@@ -210,7 +209,7 @@ function ApplicationDetail({ app }) {
           <div>
             <h3 className="panel__title">저장된 서류</h3>
             <p className="muted small">
-              PDF {totalPages}쪽에서 서류 {docs.length}종을 찾았습니다.
+              서류 {docs.length}종을 찾았습니다.
               {app.missing_documents?.length > 0 && (
                 <span className="warn-text"> 누락: {app.missing_documents.map((m) => DOC_LABELS[m] ?? m).join(', ')}</span>
               )}
@@ -230,7 +229,7 @@ function ApplicationDetail({ app }) {
                   </span>
                   <span className="gallery__name">{DOC_LABELS[d.doc_type] ?? d.doc_type}</span>
                   <span className="muted small">
-                    {d.page_start === d.page_end ? `${d.page_start}쪽` : `${d.page_start}–${d.page_end}쪽`} · {Object.keys(d.fields).length}개 항목
+                    {Object.keys(d.fields).length}개 항목
                   </span>
                 </button>
               ))}
