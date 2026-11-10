@@ -21,18 +21,32 @@ export default function MailPage({ onChanged, onSubmit }) {
   const [kpiFilter, setKpiFilter] = useState(null)
   const [loadError, setLoadError] = useState('')
 
-  useEffect(() => {
-    api
+  function load() {
+    setLoadError('')
+    return api
       .getMails()
       .then((list) => {
         setMails(list)
-        if (list.length) {
-          setSelectedId(list[0].id)
-          setReadIds(new Set([list[0].id]))
-        }
+        // 처음 열 때만 첫 메일을 고른다. 새로고침 때는 보던 메일을 유지한다.
+        setSelectedId((cur) => (cur && list.some((m) => m.id === cur) ? cur : list[0]?.id ?? null))
+        if (list.length) setReadIds((prev) => (prev.size ? prev : new Set([list[0].id])))
       })
       .catch((e) => setLoadError(e.message))
+  }
+  useEffect(() => {
+    load()
   }, [])
+
+  // 별(중요) 표시: 화면을 먼저 바꾸고, 저장에 실패하면 되돌린다.
+  async function star(id, on) {
+    setMails((list) => list.map((m) => (m.id === id ? { ...m, starred: on } : m)))
+    try {
+      await api.starMail(id, on)
+    } catch (e) {
+      setMails((list) => list.map((m) => (m.id === id ? { ...m, starred: !on } : m)))
+      setLoadError(`중요 표시를 저장하지 못했습니다. ${e.message}`)
+    }
+  }
 
   const kpiCounts = useMemo(
     () => Object.fromEntries(KPI.map((k) => [k.key, mails.filter(k.match).length])),
@@ -100,6 +114,8 @@ export default function MailPage({ onChanged, onSubmit }) {
           filterLabel={KPI.find((k) => k.key === kpiFilter)?.label}
           onClearFilter={() => setKpiFilter(null)}
           onSelect={select}
+          onStar={star}
+          onRefresh={load}
           onSubmit={onSubmit}
         />
         {selected && (
@@ -125,7 +141,7 @@ export default function MailPage({ onChanged, onSubmit }) {
   )
 }
 
-function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, filterLabel, onClearFilter, onSelect, onSubmit }) {
+function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, filterLabel, onClearFilter, onSelect, onStar, onRefresh, onSubmit }) {
   return (
     <section className="card mailbox" aria-label="수신함">
       <div className="mailbox__search">
@@ -148,11 +164,12 @@ function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, fi
       </div>
 
       <div className="mailbox__toolbar">
-        <span className="checkbox" aria-hidden="true" />
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#606874" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="새로고침">
-          <path d="M20 12a8 8 0 1 1-2.3-5.7" />
-          <path d="M20 4v5h-5" />
-        </svg>
+        <button type="button" className="iconbtn" onClick={onRefresh} aria-label="새로고침">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#606874" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+            <path d="M20 4v5h-5" />
+          </svg>
+        </button>
         {filterLabel && (
           <button type="button" className="filterchip" onClick={onClearFilter} aria-label={`${filterLabel} 필터 해제`}>
             {filterLabel} <span aria-hidden="true">×</span>
@@ -166,19 +183,22 @@ function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, fi
           const isUnread = m.unread && !readIds.has(m.id)
           const dec = DECISION[m.decision]
           return (
-            <button
+            <div
               key={m.id}
-              type="button"
               className={'mailrow' + (m.id === selectedId ? ' is-selected' : '') + (isUnread ? ' is-unread' : '')}
-              onClick={() => onSelect(m.id)}
             >
-              <span className="mailrow__side" aria-hidden="true">
-                <span className="checkbox" />
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B3B8C0" strokeWidth="2" strokeLinejoin="round">
+              <button
+                type="button"
+                className={'star' + (m.starred ? ' is-on' : '')}
+                aria-pressed={!!m.starred}
+                aria-label={m.starred ? `${m.org} 메일 중요 표시 해제` : `${m.org} 메일 중요 표시`}
+                onClick={() => onStar(m.id, !m.starred)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
                   <path d="M12 3l2.8 5.8 6.2.9-4.5 4.4 1.1 6.2L12 17.3 6.4 20.3l1.1-6.2L3 9.7l6.2-.9L12 3z" />
                 </svg>
-              </span>
-              <span className="mailrow__main">
+              </button>
+              <button type="button" className="mailrow__main" onClick={() => onSelect(m.id)} aria-current={m.id === selectedId || undefined}>
                 <span className="mailrow__top">
                   <span className="mailrow__sender">
                     {isUnread && <span className="dot" />}
@@ -197,8 +217,8 @@ function Mailbox({ mails, total, unread, selectedId, readIds, query, onQuery, fi
                     </svg>
                   )}
                 </span>
-              </span>
-            </button>
+              </button>
+            </div>
           )
         })}
         {mails.length === 0 && <p className="empty">조건에 맞는 메일이 없습니다.</p>}

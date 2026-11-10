@@ -132,3 +132,18 @@ def get_sensitivity(applicant_id: str, doc_types: list[str] | None = Query(None)
     if not store.get_customer(applicant_id):
         raise HTTPException(404, "customer not found")
     return store.get_sensitivity_profile(applicant_id, doc_types)
+
+##################################################
+# 자료 제공 요청 (워크플로우 2)
+##################################################
+
+
+@app.patch("/api/requests/{request_id}")
+def update_request(request_id: int, body: dict):
+    """수신함 표시 변경. body: {"is_starred": true}"""
+    if not isinstance(body.get("is_starred"), bool):
+        raise HTTPException(400, "is_starred(boolean)가 필요합니다")
+    row = store.set_request_starred(request_id, body["is_starred"])
+    if not row:
+        raise HTTPException(404, "request not found")
+    return row

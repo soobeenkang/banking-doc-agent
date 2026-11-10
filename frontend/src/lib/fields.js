@@ -1,13 +1,19 @@
 // 서류·필드 라벨, 민감도 조회, 마스킹, 값 포맷
 // 백엔드가 붙으면 FIELD_LABELS·민감도는 field_catalog 응답으로 대체하면 됩니다.
 
+// 워크플로우 1 categorySchemaMapping 과 같은 이름 (iM4/agent_configs/Workflow 1 수정본.json)
 export const DOC_LABELS = {
+  resident_identity_card: '주민등록증',
   drivers_license: '운전면허증',
   resident_registration_certificate: '주민등록등본',
   loan_application: '대출신청서',
   financial_transaction_certificate: '금융거래확인서',
-  income_verification_certificate: '소득금액증명원',
   employment_certificate: '재직증명서',
+  income_verification_certificate: '소득확인서',
+  business_registration_certificate: '사업자등록증',
+  income_amount_certificate: '소득금액증명원',
+  income_amount_certification: '소득금액증명원',
+  vat_tax_base_certificate: '부가가치세 과세표준증명',
 };
 
 export const APPLICANT_TYPES = { EMP: '급여소득자', BUS: '사업자', NONE: '확인 불가' };

@@ -72,6 +72,14 @@ def mask_fields(value):
     return value
 
 
+_CITATION_RE = re.compile(r"\s*【[^】]*】|\s*\[\s*[†+]\s*\d+(?:\s*[,†+]\s*\d+)*\s*\]")
+
+
+def strip_citations(v):
+    """LLM이 붙인 출처 표시(【†1】, [†2] 등)를 지운다."""
+    return _CITATION_RE.sub("", v).strip() if isinstance(v, str) else v
+
+
 def present_fields(obj: dict, prefix: str = "") -> list[str]:
     """값이 실제로 있는 필드 경로. 빈 문자열·None·빈 배열 제외, 0과 False는 값으로 본다.
     예: {'name': '김도윤', 'loans': [{'balance': 9000000}], 'delinquencies': []} → ['name', 'loans[].balance']
@@ -157,7 +165,7 @@ def save_workflow1(raw, job_id: str | None = None, file_name: str | None = None)
                 job_id, file_name, r.get("applicant_id") or None, r.get("applicant_name") or None, birth,
                 r.get("applicant_type") if r.get("applicant_type") in ("EMP", "BUS") else "NONE",
                 r.get("decision") if r.get("decision") in ALLOWED_DECISIONS else "검토 필요",
-                passed, reject, r.get("reason"), r.get("issue_codes") or [], r.get("missing_documents") or [],
+                passed, reject, strip_citations(r.get("reason")), r.get("issue_codes") or [], r.get("missing_documents") or [],
                 r.get("document_types") or [d.get("text") for d in docs],
                 None if passed else Jsonb(mask_fields({"validation": r.get("validation"), "cross_check": r.get("cross_check") or []})),
             ),
@@ -292,27 +300,47 @@ def get_sensitivity_profile(applicant_id: str, doc_types: list[str] | None = Non
 
 def save_request(*, gmail_message_id, requester_company, requester_email, request_reason,
                  applicant_id, result: dict, mail_subject=None, mail_body=None, mail_received_at=None) -> dict:
-    """워크플로우 2 결과 + 메일 원문 저장 (같은 메일이면 판단 결과를 덮어씀)."""
+    """워크플로우 2 결과 + 메일 원문 저장 (같은 메일이면 판단 결과를 덮어씀).
+    result의 target_name(대상 고객 이름)·mail_body도 받는다. applicant_id가 없으면 target_name으로
+    customers에서 이름이 같은 고객이 한 명뿐일 때만 연결한다."""
+    target_name = result.get("target_name")
+    mail_body = mail_body or result.get("mail_body")
+    masking = result.get("masking")
     with pool.connection() as conn:
+        if not applicant_id and target_name:
+            rows = conn.execute("SELECT applicant_id FROM customers WHERE name = %s LIMIT 2", (target_name,)).fetchall()
+            applicant_id = rows[0]["applicant_id"] if len(rows) == 1 else None
         return conn.execute(
             """INSERT INTO data_requests
-                 (gmail_message_id, requester_company, requester_email, applicant_id, request_reason,
+                 (gmail_message_id, requester_company, requester_email, applicant_id, target_name, request_reason,
                   requested_fields, risk_score, risk_level, decision, masking_fields, reason_codes, missing_items,
-                  mail_subject, mail_body, mail_received_at)
-               VALUES (%s,%s,%s,(SELECT applicant_id FROM customers WHERE applicant_id = %s),%s,
-                       %s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                  masking, reply_draft, mail_subject, mail_body, mail_received_at)
+               VALUES (%s,%s,%s,(SELECT applicant_id FROM customers WHERE applicant_id = %s),%s,%s,
+                       %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (gmail_message_id) DO UPDATE SET
-                 applicant_id = EXCLUDED.applicant_id, requested_fields = EXCLUDED.requested_fields,
+                 applicant_id = EXCLUDED.applicant_id, target_name = EXCLUDED.target_name,
+                 requested_fields = EXCLUDED.requested_fields,
                  risk_score = EXCLUDED.risk_score, risk_level = EXCLUDED.risk_level, decision = EXCLUDED.decision,
                  masking_fields = EXCLUDED.masking_fields, reason_codes = EXCLUDED.reason_codes,
-                 missing_items = EXCLUDED.missing_items, status = 'analyzed'
+                 missing_items = EXCLUDED.missing_items, masking = EXCLUDED.masking,
+                 reply_draft = EXCLUDED.reply_draft, status = 'analyzed'
                RETURNING id, applicant_id""",
             (
-                gmail_message_id, requester_company, requester_email, applicant_id, request_reason,
+                gmail_message_id, requester_company, requester_email, applicant_id, target_name, request_reason,
                 result.get("requested_fields") or [], result.get("risk_score"), result.get("risk_level"),
                 result.get("decision"), result.get("masking_fields") or [], result.get("reason_codes") or [],
-                result.get("missing_items") or [], mail_subject, mail_body, mail_received_at,
+                result.get("missing_items") or [], Jsonb(masking) if masking is not None else None,
+                result.get("reply_draft"), mail_subject, mail_body, mail_received_at,
             ),
+        ).fetchone()
+
+
+def set_request_starred(request_id: int, starred: bool) -> dict | None:
+    """수신함 별(중요) 표시."""
+    with pool.connection() as conn:
+        return conn.execute(
+            "UPDATE data_requests SET is_starred = %s WHERE id = %s RETURNING id, is_starred",
+            (starred, request_id),
         ).fetchone()
 
 

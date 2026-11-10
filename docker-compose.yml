@@ -19,6 +19,8 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
       - ./server/db/seed_field_catalog.sql:/docker-entrypoint-initdb.d/02_seed_field_catalog.sql:ro
+      # 시연용 목업 데이터. 빈 DB로 시작하려면 이 줄을 지우고 down -v 후 다시 up
+      - ./server/db/seed_demo.sql:/docker-entrypoint-initdb.d/03_seed_demo.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 3s

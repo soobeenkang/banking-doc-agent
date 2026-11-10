@@ -1,4 +1,4 @@
--- banking-doc-agent PostgreSQL 스키마 (v3)
+-- banking-doc-agent PostgreSQL 스키마 (v4)
 -- 실행: npm run db:migrate
 --
 -- loan_applications : 워크플로우 1 실행 결과 전부(통과·반려 모두) → 신청 목록 화면
@@ -89,6 +89,7 @@ CREATE TABLE IF NOT EXISTS data_requests (
   mail_body          TEXT,                            -- 메일 본문 원문(텍스트)
   mail_received_at   TIMESTAMPTZ,                     -- 메일 수신 시각(Gmail 기준)
   applicant_id       TEXT        REFERENCES customers(applicant_id) ON DELETE SET NULL,
+  target_name        TEXT,                            -- 메일에 적힌 대상 고객 이름(워크플로우 2 target_name)
   request_reason     TEXT,
   requested_fields   TEXT[]      NOT NULL DEFAULT '{}',
   risk_score         INT         CHECK (risk_score BETWEEN 0 AND 100),
@@ -97,6 +98,9 @@ CREATE TABLE IF NOT EXISTS data_requests (
   masking_fields     TEXT[]      NOT NULL DEFAULT '{}',
   reason_codes       TEXT[]      NOT NULL DEFAULT '{}',
   missing_items      TEXT[]      NOT NULL DEFAULT '{}',
+  masking            JSONB,                           -- {"provided": [...], "masked": [{"field", "mask_type"}]}
+  reply_draft        TEXT,                            -- 워크플로우 2가 쓴 회신 초안
+  is_starred         BOOLEAN     NOT NULL DEFAULT false,  -- 수신함 별(중요) 표시
   response_payload   JSONB,                           -- 실제로 회신한 내용(마스킹 후)
   status             TEXT        NOT NULL DEFAULT 'analyzed'
                      CHECK (status IN ('analyzed','responded','rejected','failed')),

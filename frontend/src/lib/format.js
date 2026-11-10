@@ -52,6 +52,15 @@ export function failedChecks(detail) {
   )
 }
 
+// LLM이 붙인 출처 표시(【†1】, [†2], [ +1] 등)를 지운다.
+export function cleanText(v) {
+  if (typeof v !== 'string') return v
+  return v
+    .replace(/\s*【[^】]*】/g, '')
+    .replace(/\s*\[\s*[†+]\s*\d+(?:\s*[,†+]\s*\d+)*\s*\]/g, '')
+    .trim()
+}
+
 // '2026-11-08T23:56:50.306254+09:00' / '2026-11-08 23:56' → Date
 function toDate(v) {
   if (!v) return null

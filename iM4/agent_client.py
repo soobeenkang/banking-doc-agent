@@ -151,19 +151,31 @@ class AgentClient:
                 "output_text가 존재하지 않습니다."
             )
 
-        try:
+        text = response.output_text.strip()
 
-            result = json.loads(
-                response.output_text
-            )
-            if isinstance(result,str):
-                result=json.loads(result)
+        # ```json ... ``` 코드블록 제거
+        if text.startswith("```"):
+            text = text.split("\n", 1)[1] if "\n" in text else ""
+            text = text.rsplit("```", 1)[0].strip()
+
+        try:
+            result = json.loads(text)
 
         except json.JSONDecodeError:
+            # 앞뒤에 설명 문장이 붙은 경우: 첫 { 부터 마지막 } 까지만 시도
+            start, end = text.find("{"), text.rfind("}")
+            try:
+                if start == -1 or end <= start:
+                    raise json.JSONDecodeError("no object", text, 0)
+                result = json.loads(text[start:end + 1])
+            except json.JSONDecodeError:
+                raise ValueError(
+                    "output_text가 JSON 형식이 아닙니다.\n"
+                    f"--- 응답 앞부분 ---\n{response.output_text[:1000]}"
+                )
 
-            raise ValueError(
-                "output_text가 JSON 형식이 아닙니다."
-            )
+        if isinstance(result, str):
+            result = json.loads(result)
 
         return result
 
