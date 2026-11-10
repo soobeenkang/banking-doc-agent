@@ -151,7 +151,31 @@ class AgentClient:
                 "output_text가 존재하지 않습니다."
             )
 
-        text = response.output_text.strip()
+        result = response.output_text
+
+        # 에이전트가 JSON을 문자열로 한 번 더 감싸 보내는 경우가 있어서,
+        # 문자열이 남아 있으면 같은 보정을 다시 적용한다 (최대 3겹)
+        for _ in range(3):
+            if not isinstance(result, str):
+                return result
+            try:
+                result = self._loads_lenient(result)
+            except json.JSONDecodeError:
+                raise ValueError(
+                    "output_text가 JSON 형식이 아닙니다.\n"
+                    f"--- 응답 앞부분 ---\n{response.output_text[:1000]}"
+                )
+
+        raise ValueError(
+            "output_text가 여러 겹 문자열로 감싸져 있습니다.\n"
+            f"--- 응답 앞부분 ---\n{response.output_text[:1000]}"
+        )
+
+    @staticmethod
+    def _loads_lenient(text: str):
+        """코드블록·앞뒤 설명 문장을 걷어내고 JSON을 파싱한다."""
+
+        text = text.strip()
 
         # ```json ... ``` 코드블록 제거
         if text.startswith("```"):
@@ -159,25 +183,13 @@ class AgentClient:
             text = text.rsplit("```", 1)[0].strip()
 
         try:
-            result = json.loads(text)
-
+            return json.loads(text)
         except json.JSONDecodeError:
             # 앞뒤에 설명 문장이 붙은 경우: 첫 { 부터 마지막 } 까지만 시도
             start, end = text.find("{"), text.rfind("}")
-            try:
-                if start == -1 or end <= start:
-                    raise json.JSONDecodeError("no object", text, 0)
-                result = json.loads(text[start:end + 1])
-            except json.JSONDecodeError:
-                raise ValueError(
-                    "output_text가 JSON 형식이 아닙니다.\n"
-                    f"--- 응답 앞부분 ---\n{response.output_text[:1000]}"
-                )
-
-        if isinstance(result, str):
-            result = json.loads(result)
-
-        return result
+            if start == -1 or end <= start:
+                raise
+            return json.loads(text[start:end + 1])
 
     ##################################################
     # Agent 실행
