@@ -1,0 +1,429 @@
+{
+    "file": "",
+    "applicant_id": "TEST-2026-0001",
+    "applicant_name": "김도윤",
+    "applicant_type": "EMP",
+    "decision": "처리 완료",
+    "reason": "제출된 서류들의 기본 검증 결과 이상이 없고, 교차검증 가능한 신청자 정보 및 재직 정보 항목들 간에도 확인된 불일치가 없습니다.【†1】【†2】【†3】",
+    "issue_codes": [],
+    "missing_documents": [],
+    "document_types": [
+        "drivers_license",
+        "resident_registration_certificate",
+        "loan_application",
+        "financial_transaction_certificate",
+        "income_verification_certificate",
+        "employment_certificate"
+    ],
+    "documents": [
+        {
+            "text": "drivers_license",
+            "additional_values": {
+                "issue_date": "2021. 04. 19.",
+                "issuer": "대구가상경찰청장",
+                "name": "김도윤",
+                "rrn": "970315-1000000",
+                "birth_date": "1997-03-15",
+                "address": "대구광역시 가상구, 소프트로 101",
+                "license_renewal_start": "2027. 01. 01.",
+                "license_renewal_end": "2027. 12. 31.",
+                "license_no": "11-17-482913-52"
+            }
+        },
+        {
+            "text": "resident_registration_certificate",
+            "additional_values": {
+                "issue_date": "2026-11-04",
+                "issuer": "대구광역시 가상구 소프트동장",
+                "name": "김도윤",
+                "rrn": "970315-1000000",
+                "birth_date": "1997-03-15",
+                "address": "대구광역시 가상구 소프트로 101",
+                "household_head_name": "김도윤",
+                "move_in_date": "2021-04-01",
+                "household_members": [
+                    {
+                        "relation_to_head": "본인",
+                        "name": "김도윤",
+                        "rrn": "970315-1000000",
+                        "move_in_date": "2021-04-01",
+                        "change_reason": "전 입"
+                    }
+                ]
+            }
+        },
+        {
+            "text": "loan_application",
+            "additional_values": {
+                "issue_date": "2026-11-04",
+                "issuer": "테스트은행",
+                "name": "김도윤",
+                "birth_date": "1997-03-15",
+                "address": "대구광역시 가상구 소프트로 101",
+                "branch": "소프트로지점",
+                "work_address": "대구광역시 가상구 테크로 202, 넥스트타워 5층",
+                "phone_mobile": "010-0000-0001",
+                "phone_work": "053-000-0001",
+                "email": "test.emp0001@example.com",
+                "occupation_type": "급여소득자",
+                "applicant_id": "TEST-2026-0001",
+                "employment_finance": [
+                    {
+                        "company_name": "주식회사 넥스트코드",
+                        "business_reg_no": "000-00-00002",
+                        "department": "개발팀",
+                        "position": "대리",
+                        "job_duty": "소프트웨어 개발",
+                        "hire_date": "2022-03-02",
+                        "monthly_income": "3,800,000 원",
+                        "housing_tenure": "전세",
+                        "housing_type": "아파트",
+                        "has_other_loans": "유",
+                        "other_loan_total": "12,000,000 원",
+                        "other_secured_loan_total": "3,000,000 원"
+                    }
+                ],
+                "loan_details": [
+                    {
+                        "loan_amount": "₩30,000,000",
+                        "loan_term_months": "24",
+                        "repayment_method": "만기일시상환",
+                        "desired_loan_date": "2026-11-20",
+                        "loan_purpose": "주택 임차"
+                    }
+                ]
+            }
+        },
+        {
+            "text": "financial_transaction_certificate",
+            "additional_values": {
+                "doc_no": "TEST-FTC-EMP001",
+                "base_date": "2026. 11. 04.",
+                "issuer": "테스트은행 가상중앙지점",
+                "name": "김도윤",
+                "rrn": "970315-1000000",
+                "birth_date": "1997-03-15",
+                "address": "대구광역시 가상구 소프트로 101",
+                "company_name": "주식회사 넥스트코드",
+                "confirm_date": "2026-11-04",
+                "loans": [
+                    {
+                        "loan_type": "일반신용대출",
+                        "loan_purpose": "생활자금",
+                        "interest_rate": 5.2,
+                        "loan_start_date": "2024.03.15",
+                        "original_amount": 10000000,
+                        "balance": 9000000,
+                        "maturity_date": "2027.03.15",
+                        "repayment_method": "분할상환"
+                    },
+                    {
+                        "loan_type": "예금담보대출",
+                        "loan_purpose": "생활자금",
+                        "interest_rate": 4.1,
+                        "loan_start_date": "2025.06.02",
+                        "original_amount": 3000000,
+                        "balance": 3000000,
+                        "maturity_date": "2027.06.02",
+                        "repayment_method": "만기일시"
+                    }
+                ],
+                "collaterals": [
+                    {
+                        "collateral_owner": "김도윤",
+                        "owner_relation": "본인",
+                        "collateral_type": "정기예금",
+                        "appraisal_value": 5000000,
+                        "appraisal_date": "2025.06.02",
+                        "lien_rank": 1,
+                        "lien_amount": 3600000
+                    }
+                ],
+                "delinquencies": []
+            }
+        },
+        {
+            "text": "income_verification_certificate",
+            "additional_values": {
+                "application_date": "2026 년 11 월 04 일",
+                "issuer": "세 무 서 장",
+                "name": "김도윤",
+                "birth_date": "1997-03-15",
+                "annual_income": 45600000,
+                "income_earner_type": "근로",
+                "income_year": "2025",
+                "income_category": "근로"
+            }
+        },
+        {
+            "text": "employment_certificate",
+            "additional_values": {
+                "issue_date": "2026년 11월 04일",
+                "name": "김도윤",
+                "birth_date": "1997-03-15",
+                "address": "대구광역시 가상구 소프트로 101",
+                "company_name": "주식회사 넥스트코드",
+                "department": "개발팀",
+                "position": "대리",
+                "hire_date": "2022년 03월 02일",
+                "annual_income": 0,
+                "is_currently_employed": true,
+                "purpose": "금융기관 제출용"
+            }
+        }
+    ],
+    "validation_issues": [],
+    "duplicate_issues": [],
+    "validation": {
+        "reference_date": "2026-11-04",
+        "documents": [
+            {
+                "document_index": 0,
+                "doc_type": "drivers_license",
+                "checks": [
+                    {
+                        "check": "name",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "성명이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "rrn",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "주민등록번호가 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "license_no",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "면허번호가 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "issue_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "발급일이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "license_renewal_period_order",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "적성검사 기간의 시작일과 종료일이 모두 확인되며 시작일이 종료일보다 늦지 않습니다."
+                    }
+                ]
+            },
+            {
+                "document_index": 1,
+                "doc_type": "resident_registration_certificate",
+                "checks": [
+                    {
+                        "check": "address",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "주소가 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "issue_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "발급일이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "document_recency",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "등본 발급일이 기준일 대비 90일 이내입니다."
+                    },
+                    {
+                        "check": "household_members",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "세대원 내역이 실제 기재되어 있으며 추출값으로 확인 가능합니다."
+                    }
+                ]
+            },
+            {
+                "document_index": 2,
+                "doc_type": "loan_application",
+                "checks": [
+                    {
+                        "check": "name",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "성명이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "birth_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "생년월일이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "occupation_type",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "직업군이 급여소득자로 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "loan_details[0].loan_amount",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "신청금액이 추출되었고 0 이하가 아닙니다."
+                    },
+                    {
+                        "check": "loan_details[0].loan_term_months",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "대출기간 개월 수가 추출되었고 양의 정수입니다."
+                    },
+                    {
+                        "check": "employment_finance[0].other_loan_relation",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "기존 대출 유무가 유로 표시되어 있고 총대출금액과 담보대출금액의 관계가 모순되지 않습니다."
+                    }
+                ]
+            },
+            {
+                "document_index": 3,
+                "doc_type": "financial_transaction_certificate",
+                "checks": [
+                    {
+                        "check": "transaction_subject",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "거래 주체를 나타내는 성명과 직장명이 추출되어 확인 가능합니다."
+                    },
+                    {
+                        "check": "base_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "거래 기준일이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "confirm_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "은행 확인일이 추출되었고 기준일 이후가 아닙니다."
+                    },
+                    {
+                        "check": "document_recency",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "은행 확인일이 기준일 대비 30일 이내입니다."
+                    },
+                    {
+                        "check": "loan_entries",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "대출 내역이 실제 기재되어 있으며 각 항목이 추출되었습니다."
+                    },
+                    {
+                        "check": "loan_total_consistency",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "대출 잔액 합계와 개별 잔액 합계가 일치합니다."
+                    },
+                    {
+                        "check": "collaterals",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "담보 내역이 실제 기재되어 있으며 추출값으로 확인 가능합니다."
+                    },
+                    {
+                        "check": "delinquencies",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "연체 내역 없음으로 확인되며 빈 배열 추출은 실제 내역 부재와 일치합니다."
+                    }
+                ]
+            },
+            {
+                "document_index": 4,
+                "doc_type": "income_verification_certificate",
+                "checks": [
+                    {
+                        "check": "name",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "성명이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "income_year",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "귀속연도가 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "annual_income",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "총급여액이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "issue_date",
+                        "status": "UNKNOWN",
+                        "issue_code": null,
+                        "reason": "추출값에는 신청일만 있으며 증명서 발급일 필드는 추출 정보에 별도로 제공되지 않아 최근 발급 기준 검사를 수행할 수 없습니다."
+                    }
+                ]
+            },
+            {
+                "document_index": 5,
+                "doc_type": "employment_certificate",
+                "checks": [
+                    {
+                        "check": "name",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "성명이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "company_name",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "회사명이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "hire_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "입사일이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "issue_date",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "발급일이 추출되었고 원문에서 확인됩니다."
+                    },
+                    {
+                        "check": "employment_date_order",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "입사일이 증명서 발급일 이후가 아닙니다."
+                    },
+                    {
+                        "check": "document_recency",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "재직증명서 발급일이 기준일 대비 90일 이내입니다."
+                    },
+                    {
+                        "check": "annual_income",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "연소득 값 0은 명시된 값이며 공란이 아닙니다."
+                    },
+                    {
+                        "check": "is_currently_employed",
+                        "status": "PASS",
+                        "issue_code": null,
+                        "reason": "재직 여부가 true로 추출되었고 원문상 현재 재직으로 확인됩니다."
+                    }
+                ]
+            }
+        ]
+    },
+    "cross_check": []
+}

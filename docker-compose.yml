@@ -1,0 +1,47 @@
+#   docker 실행시 참고하세요~
+#   docker compose up -d            # DB + 서버
+#   docker compose up -d db         # DB만 (서버는 로컬에서 uvicorn으로 실행할 때)
+#   docker compose logs -f server   # 서버 로그
+#   docker compose down             # 중지 (데이터 유지)
+#   docker compose down -v          # 중지 + DB 데이터 삭제 (스키마 처음부터 다시 만들 때)
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-banking_doc}
+      TZ: Asia/Seoul
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./server/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./server/db/seed_field_catalog.sql:/docker-entrypoint-initdb.d/02_seed_field_catalog.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  server:
+    build: ./server
+    env_file:
+      - path: ./server/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-banking_doc}
+      IM4_DIR: /iM4
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./server:/app    # 코드 수정 시 자동 재시작(--reload)
+      - ./iM4:/iM4       # Upstage API 코드
+    depends_on:
+      db:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  pgdata:
